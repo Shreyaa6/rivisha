@@ -4,12 +4,22 @@ import './App.css'
 
 function App() {
   const [showFullMenu, setShowFullMenu] = useState(false)
+  const [showBookingPage, setShowBookingPage] = useState(false)
   const [activeCategory, setActiveCategory] = useState('Appetizer')
   const [activeTestimonial, setActiveTestimonial] = useState(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [showMobileFilter, setShowMobileFilter] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
+  const [openDropdown, setOpenDropdown] = useState(null) // 'guests' or 'time' or 'date' or null
+  const [selectedGuests, setSelectedGuests] = useState('')
+  const [selectedTime, setSelectedTime] = useState('')
+  const [selectedDate, setSelectedDate] = useState('')
+  const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth())
+  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear())
   const carouselRef = useRef(null)
+  const guestsDropdownRef = useRef(null)
+  const timeDropdownRef = useRef(null)
+  const dateDropdownRef = useRef(null)
 
   const testimonials = [
     {
@@ -153,6 +163,16 @@ function App() {
     document.body.style.overflow = 'hidden' // Prevent background scrolling
   }
 
+  const handleBookingClick = () => {
+    setShowBookingPage(true)
+    document.body.style.overflow = 'hidden' // Prevent background scrolling
+  }
+
+  const handleCloseBooking = () => {
+    setShowBookingPage(false)
+    document.body.style.overflow = '' // Restore scrolling
+  }
+
   // Close mobile filter dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -178,6 +198,142 @@ function App() {
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [showMobileMenu])
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openDropdown === 'guests' && guestsDropdownRef.current && !guestsDropdownRef.current.contains(event.target)) {
+        setOpenDropdown(null)
+      }
+      if (openDropdown === 'time' && timeDropdownRef.current && !timeDropdownRef.current.contains(event.target)) {
+        setOpenDropdown(null)
+      }
+      if (openDropdown === 'date' && dateDropdownRef.current && !dateDropdownRef.current.contains(event.target)) {
+        setOpenDropdown(null)
+      }
+    }
+    if (openDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [openDropdown])
+
+  // Generate date options for next 30 days
+  // Calendar functions
+  const formatSelectedDate = (dateStr) => {
+    if (!dateStr) return ''
+    const date = new Date(dateStr + 'T00:00:00')
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric',
+      year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+    })
+  }
+
+  const getDaysInMonth = (month, year) => {
+    return new Date(year, month + 1, 0).getDate()
+  }
+
+  const getFirstDayOfMonth = (month, year) => {
+    return new Date(year, month, 1).getDay()
+  }
+
+  const generateCalendarDays = () => {
+    const daysInMonth = getDaysInMonth(calendarMonth, calendarYear)
+    const firstDay = getFirstDayOfMonth(calendarMonth, calendarYear)
+    const days = []
+    
+    // Add empty cells for days before the first day of the month
+    for (let i = 0; i < firstDay; i++) {
+      days.push(null)
+    }
+    
+    // Add all days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      days.push({
+        day,
+        dateStr,
+        isToday: isToday(calendarYear, calendarMonth, day),
+        isPast: isPastDate(calendarYear, calendarMonth, day)
+      })
+    }
+    
+    return days
+  }
+
+  const isToday = (year, month, day) => {
+    const today = new Date()
+    return year === today.getFullYear() && 
+           month === today.getMonth() && 
+           day === today.getDate()
+  }
+
+  const isPastDate = (year, month, day) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const checkDate = new Date(year, month, day)
+    return checkDate < today
+  }
+
+  const handlePrevMonth = () => {
+    if (calendarMonth === 0) {
+      setCalendarMonth(11)
+      setCalendarYear(calendarYear - 1)
+    } else {
+      setCalendarMonth(calendarMonth - 1)
+    }
+  }
+
+  const handleNextMonth = () => {
+    if (calendarMonth === 11) {
+      setCalendarMonth(0)
+      setCalendarYear(calendarYear + 1)
+    } else {
+      setCalendarMonth(calendarMonth + 1)
+    }
+  }
+
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                      'July', 'August', 'September', 'October', 'November', 'December']
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+  // Scroll to section handler
+  const scrollToSection = (sectionId) => {
+    if (sectionId === 'book') {
+      handleBookingClick()
+      return
+    }
+    if (sectionId === 'menu') {
+      handleMenuClick()
+      return
+    }
+    const element = document.getElementById(sectionId)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
+  const guestsOptions = [
+    { value: '1', label: '1 Guest' },
+    { value: '2', label: '2 Guests' },
+    { value: '3', label: '3 Guests' },
+    { value: '4', label: '4 Guests' },
+    { value: '5', label: '5 Guests' },
+    { value: '6', label: '6+ Guests' }
+  ]
+
+  const timeOptions = [
+    { value: '11:00', label: '11:00 AM' },
+    { value: '12:00', label: '12:00 PM' },
+    { value: '13:00', label: '1:00 PM' },
+    { value: '14:00', label: '2:00 PM' },
+    { value: '18:00', label: '6:00 PM' },
+    { value: '19:00', label: '7:00 PM' },
+    { value: '20:00', label: '8:00 PM' },
+    { value: '21:00', label: '9:00 PM' }
+  ]
 
   const handleCloseMenu = () => {
     setShowFullMenu(false)
@@ -247,11 +403,11 @@ function App() {
               </svg>
             </button>
             <ul className={`nav-links ${showMobileMenu ? 'mobile-open' : ''}`}>
-              <li><a href="#home" onClick={() => setShowMobileMenu(false)}>Home</a></li>
-              <li><a href="#menu" onClick={() => { handleMenuClick(); setShowMobileMenu(false); }}>Our Menu</a></li>
-              <li><a href="#contact" onClick={() => setShowMobileMenu(false)}>Contact Us</a></li>
-              <li><a href="#book" onClick={() => setShowMobileMenu(false)}>Book a Table</a></li>
-              <li><a href="#reviews" onClick={() => setShowMobileMenu(false)}>Reviews</a></li>
+              <li><a href="#home" onClick={(e) => { e.preventDefault(); scrollToSection('home'); setShowMobileMenu(false); }}>Home</a></li>
+              <li><a href="#menu" onClick={(e) => { e.preventDefault(); scrollToSection('menu'); setShowMobileMenu(false); }}>Our Menu</a></li>
+              <li><a href="#contact" onClick={(e) => { e.preventDefault(); scrollToSection('contact'); setShowMobileMenu(false); }}>Contact Us</a></li>
+              <li><a href="#book" onClick={(e) => { e.preventDefault(); scrollToSection('book'); setShowMobileMenu(false); }}>Book a Table</a></li>
+              <li><a href="#reviews" onClick={(e) => { e.preventDefault(); scrollToSection('reviews'); setShowMobileMenu(false); }}>Reviews</a></li>
             </ul>
           </div>
         </nav>
@@ -281,7 +437,7 @@ function App() {
                 <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
-            <button className="btn-book">
+            <button className="btn-book" onClick={handleBookingClick}>
               <svg className="calendar-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2"/>
                 <path d="M16 2V6M8 2V6M3 10H21" stroke="currentColor" strokeWidth="2"/>
@@ -371,7 +527,7 @@ function App() {
       </section>
 
       {/* Editorial Food Image Composition Section */}
-      <section className="editorial-food-section">
+      <section id="contact" className="editorial-food-section">
         <div className="editorial-food-container">
           {/* Background Organic Blobs */}
           <div className="editorial-organic-blobs">
@@ -445,7 +601,7 @@ function App() {
       </section>
 
       {/* Testimonials Section */}
-      <section className="testimonials-section">
+      <section id="reviews" className="testimonials-section">
         <div className="testimonials-container">
           <div className="testimonials-grid">
             {getVisibleTestimonials().map((testimonial, index) => {
@@ -531,9 +687,9 @@ function App() {
           <p className="welcome-description">
             From seekers of fine dining to folks craving a more relaxed, casual vibe — we've got everyone covered!
           </p>
-          <button className="welcome-button">
+          <button className="welcome-button" onClick={handleBookingClick}>
             Book a Table <span className="welcome-arrow">&gt;</span>
-          </button>
+        </button>
         </div>
       </section>
 
@@ -688,6 +844,233 @@ function App() {
                   <div className="menu-divider"></div>
                 </div>
               ))}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* Book a Table Page */}
+      {showBookingPage && (
+        <div className="menu-overlay" onClick={handleCloseBooking}>
+          <section id="book-table" className="full-menu-section booking-section" onClick={(e) => e.stopPropagation()}>
+            {/* Background Organic Blobs */}
+            <div className="menu-organic-blobs">
+              <div className="menu-organic-blob menu-blob-1"></div>
+              <div className="menu-organic-blob menu-blob-2"></div>
+              <div className="menu-organic-blob menu-blob-3"></div>
+              {/* Outline Blobs */}
+              <div className="menu-organic-blob-outline menu-outline-blob-1"></div>
+              <div className="menu-organic-blob-outline menu-outline-blob-2"></div>
+            </div>
+            <button className="menu-close-btn" onClick={handleCloseBooking}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            <div className="full-menu-container booking-container">
+              <h2 className="booking-title">BOOK A TABLE</h2>
+              <p className="booking-description">Reserve your spot at Rivisha. Fill out the form below and we'll confirm your reservation.</p>
+              <div className="menu-divider"></div>
+              
+              <form className="booking-form">
+                <div className="booking-form-row">
+                  <div className="booking-form-group">
+                    <label className="booking-label">NAME</label>
+                    <input 
+                      type="text" 
+                      className="booking-input" 
+                      placeholder="YOUR NAME"
+                      required
+                    />
+                  </div>
+                  <div className="booking-form-group">
+                    <label className="booking-label">PHONE</label>
+                    <input 
+                      type="tel" 
+                      className="booking-input" 
+                      placeholder="YOUR PHONE"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="booking-form-row">
+                  <div className="booking-form-group">
+                    <label className="booking-label">EMAIL</label>
+                    <input 
+                      type="email" 
+                      className="booking-input" 
+                      placeholder="YOUR EMAIL"
+                      required
+                    />
+                  </div>
+                  <div className="booking-form-group">
+                    <label className="booking-label">GUESTS</label>
+                    <div className="custom-dropdown-wrapper" ref={guestsDropdownRef}>
+                      <button
+                        type="button"
+                        className={`booking-input booking-select ${openDropdown === 'guests' ? 'dropdown-open' : ''} ${!selectedGuests ? 'placeholder-text' : ''}`}
+                        onClick={() => setOpenDropdown(openDropdown === 'guests' ? null : 'guests')}
+                      >
+                        <span>{selectedGuests ? guestsOptions.find(opt => opt.value === selectedGuests)?.label : 'SELECT GUESTS'}</span>
+                        <svg className="dropdown-arrow" width="12" height="8" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M1 1L6 6L11 1" stroke="#5A493B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                      {openDropdown === 'guests' && (
+                        <div className="custom-dropdown-menu">
+                          {guestsOptions.map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              className={`custom-dropdown-item ${selectedGuests === option.value ? 'selected' : ''}`}
+                              onClick={() => {
+                                setSelectedGuests(option.value)
+                                setOpenDropdown(null)
+                              }}
+                            >
+                              <span className="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M8 8C9.65685 8 11 6.65685 11 5C11 3.34315 9.65685 2 8 2C6.34315 2 5 3.34315 5 5C5 6.65685 6.34315 8 8 8Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <path d="M2.66667 13.3333C2.66667 11.0867 4.58667 9.33333 7 9.33333C9.41333 9.33333 11.3333 11.0867 11.3333 13.3333" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              </span>
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <input type="hidden" name="guests" value={selectedGuests} required />
+                  </div>
+                </div>
+
+                <div className="booking-form-row">
+                  <div className="booking-form-group">
+                    <label className="booking-label">DATE</label>
+                    <div className="custom-dropdown-wrapper" ref={dateDropdownRef}>
+                      <button
+                        type="button"
+                        className={`booking-input booking-select ${openDropdown === 'date' ? 'dropdown-open' : ''} ${!selectedDate ? 'placeholder-text' : ''}`}
+                        onClick={() => setOpenDropdown(openDropdown === 'date' ? null : 'date')}
+                      >
+                        <span>{selectedDate ? formatSelectedDate(selectedDate) : 'SELECT DATE'}</span>
+                        <svg className="dropdown-arrow" width="12" height="8" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M1 1L6 6L11 1" stroke="#5A493B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                      {openDropdown === 'date' && (
+                        <div className="custom-dropdown-menu calendar-menu">
+                          <div className="calendar-header">
+                            <button 
+                              type="button" 
+                              className="calendar-nav-btn"
+                              onClick={handlePrevMonth}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M10 12L6 8L10 4" stroke="#5A493B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </button>
+                            <div className="calendar-month-year">
+                              {monthNames[calendarMonth]} {calendarYear}
+                            </div>
+                            <button 
+                              type="button" 
+                              className="calendar-nav-btn"
+                              onClick={handleNextMonth}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M6 12L10 8L6 4" stroke="#5A493B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </button>
+                          </div>
+                          <div className="calendar-weekdays">
+                            {dayNames.map(day => (
+                              <div key={day} className="calendar-weekday">{day}</div>
+                            ))}
+                          </div>
+                          <div className="calendar-days">
+                            {generateCalendarDays().map((dateInfo, index) => {
+                              if (!dateInfo) {
+                                return <div key={`empty-${index}`} className="calendar-day empty"></div>
+                              }
+                              return (
+                                <button
+                                  key={dateInfo.dateStr}
+                                  type="button"
+                                  className={`calendar-day ${dateInfo.isToday ? 'today' : ''} ${selectedDate === dateInfo.dateStr ? 'selected' : ''} ${dateInfo.isPast ? 'past' : ''}`}
+                                  onClick={() => {
+                                    if (!dateInfo.isPast) {
+                                      setSelectedDate(dateInfo.dateStr)
+                                      setOpenDropdown(null)
+                                    }
+                                  }}
+                                  disabled={dateInfo.isPast}
+                                >
+                                  {dateInfo.day}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <input type="hidden" name="date" value={selectedDate} required />
+                  </div>
+                  <div className="booking-form-group">
+                    <label className="booking-label">TIME</label>
+                    <div className="custom-dropdown-wrapper" ref={timeDropdownRef}>
+                      <button
+                        type="button"
+                        className={`booking-input booking-select ${openDropdown === 'time' ? 'dropdown-open' : ''} ${!selectedTime ? 'placeholder-text' : ''}`}
+                        onClick={() => setOpenDropdown(openDropdown === 'time' ? null : 'time')}
+                      >
+                        <span>{selectedTime ? timeOptions.find(opt => opt.value === selectedTime)?.label : 'SELECT TIME'}</span>
+                        <svg className="dropdown-arrow" width="12" height="8" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M1 1L6 6L11 1" stroke="#5A493B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                      {openDropdown === 'time' && (
+                        <div className="custom-dropdown-menu">
+                          {timeOptions.map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              className={`custom-dropdown-item ${selectedTime === option.value ? 'selected' : ''}`}
+                              onClick={() => {
+                                setSelectedTime(option.value)
+                                setOpenDropdown(null)
+                              }}
+                            >
+                              <span className="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5"/>
+                                  <path d="M8 4V8L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                                </svg>
+                              </span>
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <input type="hidden" name="time" value={selectedTime} required />
+                  </div>
+                </div>
+
+                <div className="booking-form-group">
+                  <label className="booking-label">SPECIAL REQUESTS</label>
+                  <textarea 
+                    className="booking-input booking-textarea" 
+                    placeholder="ANY SPECIAL REQUESTS OR PREFERENCES"
+                    rows="4"
+                  ></textarea>
+                </div>
+
+                <button type="submit" className="booking-submit-btn">
+                  SUBMIT RESERVATION
+                </button>
+              </form>
             </div>
           </section>
         </div>
